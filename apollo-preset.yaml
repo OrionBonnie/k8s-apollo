@@ -1,0 +1,43 @@
+kind: Namespace
+apiVersion: v1
+metadata:
+  name: apollo
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: apollo-config-dev
+  namespace: apollo
+data:
+  config-data: |-
+    spring.datasource.url = jdbc:mysql://192.168.254.32:3306/ApolloDevConfigDB?characterEncoding=utf8&&serverTimezone=Asia/Shanghai
+    spring.datasource.username = Apollo
+    spring.datasource.password = 123
+    eureka.service.url=http://apollo-config-dev-0.apolloconfigsvc-dev:8080/eureka/
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: apollo-config-prod
+  namespace: apollo
+data:
+  config-data: |-
+    spring.datasource.url = jdbc:mysql://192.168.254.32:3306/ApolloProdConfigDB?characterEncoding=utf8&&serverTimezone=Asia/Shanghai
+    spring.datasource.username = Apollo
+    spring.datasource.password = 123
+    eureka.service.url=http://apollo-config-prod-0.apolloconfigsvc-prod:8080/eureka/
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: apollo-portal-config
+  namespace: apollo
+data:
+  config-data: |-
+    spring.datasource.url = jdbc:mysql://192.168.254.32:3306/ApolloPortalDB?characterEncoding=utf8
+    spring.datasource.username = Apollo
+    spring.datasource.password = 123
+  env-data: |-
+    local.meta=http://localhost:8080
+    dev.meta=http://apolloconfigsvc-dev.apollo:8080
+    pro.meta=http://apolloconfigsvc-prod.apollo:8080

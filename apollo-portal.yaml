@@ -1,0 +1,95 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: apollo-portal
+  namespace: apollo
+  labels:
+    app: apollo-portal
+spec:
+  selector:
+    matchLabels:
+      app: apollo-portal
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: apollo-portal
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - apollo-portal
+            topologyKey: "kubernetes.io/hostname"
+      containers:
+      - name: apollo-admin
+        image: registry.cn-guangzhou.aliyuncs.com/orionbonnie/apollo-portal:v1
+        env:
+          - name: APOLLO_PORTAL_SERVICE_NAME
+            value: "apolloportalsvc.apollo"
+        ports:
+        - containerPort: 8070
+        resources:
+          requests:
+            cpu: 500m
+            memory: 700M
+          limits:
+            cpu: 750m
+            memory: 1200M
+        livenessProbe:
+          tcpSocket:
+            port: 8070
+          initialDelaySeconds: 170
+        readinessProbe:
+          tcpSocket:
+            port: 8070
+        volumeMounts:
+          - mountPath: /opt/apollo-portal/config/
+            name: apollo-portal-confpath
+      volumes:
+        - name: apollo-portal-confpath
+          configMap:
+            name: apollo-portal-config
+            items:
+            - key: config-data
+              path: application-github.properties
+            - key: env-data
+              path: apollo-env.properties
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: apolloportalsvc
+  namespace: apollo
+  labels:
+    app: apollo-portal
+spec:
+  selector:
+    app: apollo-portal
+  type: ClusterIP
+  ports:
+    - port: 8070
+      targetPort: 8070
+---
+kind: Ingress
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: apollo-ingress
+  namespace: apollo
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: www.apollo.com
+    http:
+      paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: apolloportalsvc
+              port:
+                number: 8070

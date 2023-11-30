@@ -1,0 +1,150 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: apolloconfigsvc-prod
+  namespace: apollo
+  labels:
+    app: apollo-config-prod
+spec:
+  selector:
+    app: apollo-config-prod
+  type: ClusterIP
+  ports:
+   - port: 8080
+     targetPort: 8080
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: apolloadminsvc-prod
+  namespace: apollo
+  labels:
+    app: apollo-admin-prod
+spec:
+  selector:
+    app: apollo-admin-prod
+  type: ClusterIP
+  ports:
+    - port: 8090
+      targetPort: 8090
+---
+kind: StatefulSet
+apiVersion: apps/v1
+metadata:
+  name: apollo-config-prod
+  namespace: apollo
+  labels:
+    app: apollo-config-prod
+spec:
+  serviceName: apolloconfigsvc-prod
+  selector:
+    matchLabels:
+      app: apollo-config-prod
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: apollo-config-prod
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - apollo-config-prod
+            topologyKey: "kubernetes.io/hostname"
+      containers:
+      - name: apollo-config-prod
+        image: registry.cn-guangzhou.aliyuncs.com/orionbonnie/apollo-config:v2
+        env:
+          - name: APOLLO_CONFIG_SERVICE_NAME
+            value: "apolloconfigsvc-prod.apollo"
+        ports:
+        - containerPort: 8080
+        resources:
+          requests:
+            cpu: 1000m
+            memory: 1000M
+          limits:
+            cpu: 1500m
+            memory: 1500M
+        livenessProbe:
+          tcpSocket:
+            port: 8080
+          initialDelaySeconds: 170
+        readinessProbe:
+          tcpSocket:
+            port: 8080
+        volumeMounts:
+          - mountPath: /opt/apollo-config/config/
+            name: apollo-config-confpath
+      volumes:
+        - name: apollo-config-confpath
+          configMap:
+            name: apollo-config-prod
+            items:
+            - key: config-data
+              path: application-github.properties
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: apollo-admin-prod
+  namespace: apollo
+  labels:
+    app: apollo-admin-prod
+spec:
+  selector:
+    matchLabels:
+      app: apollo-admin-prod
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: apollo-admin-prod
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - apollo-admin-prod
+            topologyKey: "kubernetes.io/hostname"
+      containers:
+      - name: apollo-admin-prod
+        image: registry.cn-guangzhou.aliyuncs.com/orionbonnie/apollo-admin:v1
+        env:
+          - name: APOLLO_ADMIN_SERVICE_NAME
+            value: "apolloadminsvc-prod.apollo"
+        ports:
+        - containerPort: 8090
+        resources:
+          requests:
+            cpu: 500m
+            memory: 1000M
+          limits:
+            cpu: 750m
+            memory: 1500M
+        livenessProbe:
+          tcpSocket:
+            port: 8090
+          initialDelaySeconds: 170
+        readinessProbe:
+          tcpSocket:
+            port: 8090
+        volumeMounts:
+          - mountPath: /opt/apollo-admin/config/
+            name: apollo-admin-confpath
+      volumes:
+        - name: apollo-admin-confpath
+          configMap:
+            name: apollo-config-prod
+            items:
+            - key: config-data
+              path: application-github.properties
